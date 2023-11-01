@@ -42,7 +42,10 @@
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+uint8_t rxTempBuffer[10];
+uint8_t rxBuffer[100];
+uint8_t	rxInd=0;
+uint8_t rxOk=0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -50,7 +53,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -59,21 +62,21 @@ static void MX_USART2_UART_Init(void);
 void ESP8266_Init(void) {
   char buffer[50];
   HAL_UART_Transmit(&huart2, (uint8_t*)"AT+RST\r\n", strlen("AT+RST\r\n"), 1000);
-  HAL_Delay(2000);
+  while(!rxOk){};
   HAL_UART_Transmit(&huart2, (uint8_t*)"AT+CWMODE=1\r\n", strlen("AT+CWMODE=1\r\n"), 1000);
-  HAL_Delay(2000);
+  while(!rxOk){};
   //AT+CWMODE=3
   HAL_UART_Transmit(&huart2, (uint8_t*)"AT+CWMODE=3\r\n", strlen("AT+CWMODE=3\r\n"), 1000);
-  HAL_Delay(2000);
+  while(!rxOk){};
   //AT+CIPMUX=1
   HAL_UART_Transmit(&huart2, (uint8_t*)"AT+CIPMUX=1\r\n", strlen("AT+CIPMUX=1\r\n"), 1000);
-  HAL_Delay(2000);
-  sprintf(buffer, "AT+CWJAP=\"Maple.V2\",\"early2.modern2.matlab2\"\r\n");
+  while(!rxOk){};
+  sprintf(buffer, "AT+CWJAP=\"ID\",\"Password\"\r\n");
   HAL_UART_Transmit(&huart2, (uint8_t*)buffer, strlen(buffer), 1000);
-  HAL_Delay(6000);
+  while(!rxOk){};
   //AT+CIPSERVER=1,80
   HAL_UART_Transmit(&huart2, (uint8_t*)"AT+CIPSERVER=1,80\r\n", strlen("AT+CIPSERVER=1,80\r\n"), 1000);
-  HAL_Delay(2000);
+  while(!rxOk){};
 }
 
 
@@ -114,7 +117,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
+  HAL_UART_Receive_IT(&huart2, rxTempBuffer, 1);
   ESP8266_Init();
 
   while (1)
@@ -217,12 +220,27 @@ static void MX_GPIO_Init(void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   /* Prevent unused argument(s) compilation warning */
-  UNUSED(huart);
+  //UNUSED(huart);
   /* NOTE: This function should not be modified, when the callback is needed,
            the HAL_UART_RxCpltCallback could be implemented in the user file
    */
-  ESP8266_SendPage();
+	if(huart == &huart2){
+	  	  rxBuffer[rxInd]=rxTempBuffer[0];
+	  	  rxInd++;
+	  	  if(rxBuffer[rxInd-3]=='K' && rxBuffer[rxInd-4]=='O'){
+	  		rxOk=1;
+	  		rxInd=0;
+	  	  }else{
+	  		  rxOk=0;
+
+
+	  	  }
+	  	  HAL_UART_Receive_IT(&huart2, rxTempBuffer, 1);
+	    }
 }
+
+
+
 /* USER CODE END 4 */
 
 /**
